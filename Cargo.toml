@@ -1,0 +1,35 @@
+[package]
+name = "syscalls-rs"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Rust port of syscalls-cpp: policy-based framework for crafting undetectable/protected Windows syscalls (x86/x64)."
+repository = "https://github.com/sapdragon/syscalls-cpp"
+
+[features]
+default = []
+# When enabled, SyscallKey is String instead of u64 (mirrors -DSYSCALLS_NO_HASH).
+no_hash = []
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.59", features = [
+    "Win32_Foundation",
+    "Win32_System_Diagnostics_Debug",
+    "Win32_System_Kernel",
+    "Win32_System_Memory",
+    "Win32_System_SystemInformation",
+    "Win32_System_SystemServices",
+    "Win32_System_Threading",
+    "Win32_System_WindowsProgramming",
+] }
+
+[lib]
+crate-type = ["rlib"]
+
+[[example]]
+name = "basic_usage"
+path = "examples/basic_usage.rs"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
