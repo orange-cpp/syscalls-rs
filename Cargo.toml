@@ -30,6 +30,10 @@ crate-type = ["rlib"]
 name = "basic_usage"
 path = "examples/basic_usage.rs"
 
+[[example]]
+name = "message_box"
+path = "examples/message_box.rs"
+
 [profile.release]
 opt-level = 3
 lto = "thin"
