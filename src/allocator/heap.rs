@@ -8,7 +8,6 @@ use crate::native::{get_export_by_hash, get_module_base_by_hash};
 use crate::shared::{
     RtlAllocateHeap, RtlCreateHeap, RtlDestroyHeap, HEAP_CREATE_ENABLE_EXECUTE, HEAP_GROWABLE,
 };
-use windows_sys::Win32::Foundation::HANDLE;
 
 use super::{AllocatedRegion, Allocator};
 
@@ -48,16 +47,16 @@ impl Allocator for Heap {
             core::ptr::copy_nonoverlapping(buffer.as_ptr(), region as *mut u8, buffer.len());
             Some(AllocatedRegion {
                 region,
-                handle: heap as HANDLE,
+                aux: heap as usize,
             })
         }
     }
 
     fn release(r: AllocatedRegion) {
-        if r.handle == 0 as HANDLE {
+        if r.aux == 0 {
             return;
         }
-        destroy_heap(r.handle as *mut c_void);
+        destroy_heap(r.aux as *mut c_void);
     }
 }
 

@@ -151,4 +151,3 @@ unsafe fn make_nt_key(name: &[u8]) -> SyscallKey {
         std::str::from_utf8_unchecked(cstr).to_owned()
     }
 }
-

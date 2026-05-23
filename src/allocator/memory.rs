@@ -1,22 +1,30 @@
-//! `NtAllocateVirtualMemory` (RW) -> fill -> `NtProtectVirtualMemory` (RX).
+//! Platform-specific memory allocator.
+//!
+//! Windows: `NtAllocateVirtualMemory` (RW) -> fill -> `NtProtectVirtualMemory` (RX).
+//! Linux:   `mmap` (RW) -> fill -> `mprotect` (RX).
 
+#[cfg(windows)]
 use core::ffi::c_void;
-use core::ptr;
-
-use crate::hash::hash_str;
-use crate::native::{get_export_by_hash, get_module_base_by_hash};
-use crate::shared::{
-    current_process, is_success, NtAllocateVirtualMemory, NtFreeVirtualMemory,
-    NtProtectVirtualMemory, MEM_COMMIT, MEM_RELEASE, MEM_RESERVE, PAGE_EXECUTE_READ, PAGE_READWRITE,
-};
-use windows_sys::Win32::Foundation::HANDLE;
 
 use super::{AllocatedRegion, Allocator};
 
 pub struct Memory;
 
+// ---------------------------------------------------------------------------
+// Windows implementation.
+// ---------------------------------------------------------------------------
+#[cfg(windows)]
 impl Allocator for Memory {
     fn allocate(buffer: &[u8]) -> Option<AllocatedRegion> {
+        use core::ptr;
+
+        use crate::hash::hash_str;
+        use crate::native::{get_export_by_hash, get_module_base_by_hash};
+        use crate::shared::{
+            current_process, is_success, NtAllocateVirtualMemory, NtProtectVirtualMemory,
+            MEM_COMMIT, MEM_RELEASE, MEM_RESERVE, PAGE_EXECUTE_READ, PAGE_READWRITE,
+        };
+
         unsafe {
             let ntdll = get_module_base_by_hash(hash_str("ntdll.dll"));
             if ntdll.is_null() {
@@ -61,14 +69,15 @@ impl Allocator for Memory {
                 }
                 return None;
             }
-            Some(AllocatedRegion {
-                region,
-                handle: 0 as HANDLE,
-            })
+            Some(AllocatedRegion { region, aux: 0 })
         }
     }
 
     fn release(r: AllocatedRegion) {
+        use crate::hash::hash_str;
+        use crate::native::get_module_base_by_hash;
+        use crate::shared::{current_process, MEM_RELEASE};
+
         if r.region.is_null() {
             return;
         }
@@ -86,11 +95,62 @@ impl Allocator for Memory {
     }
 }
 
-unsafe fn get_free(ntdll: *mut c_void) -> Option<NtFreeVirtualMemory> {
+#[cfg(windows)]
+unsafe fn get_free(ntdll: *mut c_void) -> Option<crate::shared::NtFreeVirtualMemory> {
+    use crate::hash::hash_str;
+    use crate::native::get_export_by_hash;
+
     let f = get_export_by_hash(ntdll, hash_str("NtFreeVirtualMemory"));
     if f.is_null() {
         None
     } else {
         Some(core::mem::transmute(f))
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Linux implementation — mmap/mprotect/munmap via raw syscalls.
+// ---------------------------------------------------------------------------
+#[cfg(target_os = "linux")]
+impl Allocator for Memory {
+    fn allocate(buffer: &[u8]) -> Option<AllocatedRegion> {
+        use crate::native::{sys_mmap, sys_mprotect};
+        use crate::shared::{
+            MAP_ANONYMOUS, MAP_FAILED, MAP_PRIVATE, PROT_EXEC, PROT_READ, PROT_WRITE,
+        };
+
+        unsafe {
+            let region = sys_mmap(
+                core::ptr::null_mut(),
+                buffer.len(),
+                PROT_READ | PROT_WRITE,
+                MAP_PRIVATE | MAP_ANONYMOUS,
+                -1,
+                0,
+            );
+            if region == MAP_FAILED || region.is_null() {
+                return None;
+            }
+            core::ptr::copy_nonoverlapping(buffer.as_ptr(), region as *mut u8, buffer.len());
+
+            let ret = sys_mprotect(region, buffer.len(), PROT_READ | PROT_EXEC);
+            if ret != 0 {
+                crate::native::sys_munmap(region, buffer.len());
+                return None;
+            }
+            Some(AllocatedRegion {
+                region,
+                aux: buffer.len(),
+            })
+        }
+    }
+
+    fn release(r: AllocatedRegion) {
+        if r.region.is_null() || r.aux == 0 {
+            return;
+        }
+        unsafe {
+            crate::native::sys_munmap(r.region, r.aux);
+        }
     }
 }

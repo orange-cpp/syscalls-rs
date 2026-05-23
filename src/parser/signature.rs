@@ -4,7 +4,7 @@
 
 use core::slice;
 
-use crate::hash::{hash_bytes, hash_bytes_len, hash_str};
+use crate::hash::{hash_bytes_len, hash_str};
 use crate::types::{ModuleInfo, SyscallEntry, SyscallKey};
 
 use super::Parser;
@@ -141,7 +141,7 @@ unsafe fn cstr<'a>(ptr: *const u8) -> &'a [u8] {
 fn name_key(name: &[u8]) -> SyscallKey {
     #[cfg(not(feature = "no_hash"))]
     {
-        hash_bytes(name)
+        crate::hash::hash_bytes(name)
     }
     #[cfg(feature = "no_hash")]
     {

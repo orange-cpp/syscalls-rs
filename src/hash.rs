@@ -16,7 +16,9 @@ pub const POLY_KEY_2: Hash = 0xB4F281729182741Du64 ^ CURRENT_SEED.rotate_right(7
 #[inline]
 const fn step(mut hash: Hash, byte: u8) -> Hash {
     hash ^= byte as Hash;
-    hash = hash.wrapping_add(hash.rotate_right(11)).wrapping_add(POLY_KEY_2);
+    hash = hash
+        .wrapping_add(hash.rotate_right(11))
+        .wrapping_add(POLY_KEY_2);
     hash
 }
 

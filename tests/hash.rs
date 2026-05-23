@@ -8,7 +8,10 @@ fn compile_time_hash_non_zero() {
 
 #[test]
 fn different_strings_different_hashes() {
-    assert_ne!(hash_str("NtAllocateVirtualMemory"), hash_str("NtFreeVirtualMemory"));
+    assert_ne!(
+        hash_str("NtAllocateVirtualMemory"),
+        hash_str("NtFreeVirtualMemory")
+    );
 }
 
 #[test]
@@ -32,7 +35,10 @@ fn case_insensitive_hash() {
 #[test]
 fn ci_wide_matches_ci_byte() {
     let wide: Vec<u16> = "kernel32.dll".encode_utf16().collect();
-    assert_eq!(hash_runtime_ci(b"kernel32.dll"), hash_runtime_ci_wide(&wide));
+    assert_eq!(
+        hash_runtime_ci(b"kernel32.dll"),
+        hash_runtime_ci_wide(&wide)
+    );
 }
 
 #[test]

@@ -8,8 +8,8 @@ use crate::hash::hash_str;
 use crate::native::{get_export_by_hash, get_module_base_by_hash};
 use crate::shared::{
     current_process, is_success, LargeInteger, NtClose, NtCreateSection, NtMapViewOfSection,
-    NtUnmapViewOfSection, PAGE_EXECUTE_READ, PAGE_EXECUTE_READWRITE, PAGE_READWRITE, SEC_COMMIT,
-    SECTION_ALL_ACCESS, SECTION_NO_CHANGE, VIEW_SHARE,
+    NtUnmapViewOfSection, PAGE_EXECUTE_READ, PAGE_EXECUTE_READWRITE, PAGE_READWRITE,
+    SECTION_ALL_ACCESS, SECTION_NO_CHANGE, SEC_COMMIT, VIEW_SHARE,
 };
 use windows_sys::Win32::Foundation::HANDLE;
 
@@ -51,7 +51,6 @@ impl Allocator for Section {
                 return None;
             }
 
-            // Map RW so we can fill, then re-map RX with SEC_NO_CHANGE locked.
             let mut temp: *mut c_void = ptr::null_mut();
             let mut view_size: usize = buffer.len();
             let status = nt_map(
@@ -91,10 +90,7 @@ impl Allocator for Section {
             if !is_success(status) || region.is_null() {
                 return None;
             }
-            Some(AllocatedRegion {
-                region,
-                handle: 0 as HANDLE,
-            })
+            Some(AllocatedRegion { region, aux: 0 })
         }
     }
 

@@ -3,13 +3,15 @@
 use core::ffi::c_void;
 
 pub mod direct;
+#[cfg(windows)]
 pub mod exception;
-#[cfg(target_pointer_width = "64")]
+#[cfg(all(windows, target_pointer_width = "64"))]
 pub mod gadget;
 
 pub use direct::Direct;
+#[cfg(windows)]
 pub use exception::Exception;
-#[cfg(target_pointer_width = "64")]
+#[cfg(all(windows, target_pointer_width = "64"))]
 pub use gadget::Gadget;
 
 pub trait StubGenerator {

@@ -1,0 +1,195 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: -D warnings
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Windows — build + test (MSVC x64, MSVC x86, GNU x64) × default / no_hash
+  # ---------------------------------------------------------------------------
+  windows:
+    name: Windows · ${{ matrix.toolchain }} ${{ matrix.arch }}${{ matrix.features && ' [no_hash]' || '' }}
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - toolchain: MSVC
+            arch: x64
+            target: x86_64-pc-windows-msvc
+            features: ""
+          - toolchain: MSVC
+            arch: x64
+            target: x86_64-pc-windows-msvc
+            features: "--features no_hash"
+          - toolchain: MSVC
+            arch: x86
+            target: i686-pc-windows-msvc
+            features: ""
+          - toolchain: MSVC
+            arch: x86
+            target: i686-pc-windows-msvc
+            features: "--features no_hash"
+          - toolchain: GNU
+            arch: x64
+            target: x86_64-pc-windows-gnu
+            features: ""
+          - toolchain: GNU
+            arch: x64
+            target: x86_64-pc-windows-gnu
+            features: "--features no_hash"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-${{ matrix.target }}-${{ hashFiles('Cargo.toml') }}
+
+      - name: Build
+        run: cargo build --release --target ${{ matrix.target }} ${{ matrix.features }}
+
+      - name: Build examples
+        run: cargo build --release --target ${{ matrix.target }} ${{ matrix.features }} --examples
+
+      - name: Test
+        run: cargo test --release --target ${{ matrix.target }} ${{ matrix.features }} -- --nocapture
+
+  # ---------------------------------------------------------------------------
+  # Linux — build + test (x86_64) × default / no_hash
+  # ---------------------------------------------------------------------------
+  linux:
+    name: Linux · x86_64${{ matrix.features && ' [no_hash]' || '' }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            features: ""
+          - target: x86_64-unknown-linux-gnu
+            features: "--features no_hash"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-${{ matrix.target }}-${{ hashFiles('Cargo.toml') }}
+
+      - name: Build
+        run: cargo build --release --target ${{ matrix.target }} ${{ matrix.features }}
+
+      - name: Build examples
+        run: cargo build --release --target ${{ matrix.target }} ${{ matrix.features }} --examples
+
+      - name: Test
+        run: cargo test --release --target ${{ matrix.target }} ${{ matrix.features }} -- --nocapture
+
+  # ---------------------------------------------------------------------------
+  # Cross-check — verify Linux code compiles on Windows runner and vice versa
+  # (catches cfg-gate mistakes without needing to run the binaries)
+  # ---------------------------------------------------------------------------
+  cross-check:
+    name: Cross-check · ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-pc-windows-msvc
+          - os: windows-latest
+            target: x86_64-unknown-linux-gnu
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Check (no run)
+        run: cargo check --target ${{ matrix.target }}
+
+  # ---------------------------------------------------------------------------
+  # Lint & docs
+  # ---------------------------------------------------------------------------
+  fmt:
+    name: rustfmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - run: cargo fmt --all -- --check
+
+  clippy-linux:
+    name: clippy (Linux)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - run: cargo clippy --all-targets --all-features -- -D warnings
+
+  clippy-windows:
+    name: clippy (Windows)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - run: cargo clippy --all-targets --all-features -- -D warnings
+
+  docs-linux:
+    name: cargo doc (Linux)
+    runs-on: ubuntu-latest
+    env:
+      RUSTDOCFLAGS: -D warnings
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo doc --no-deps --all-features
+
+  docs-windows:
+    name: cargo doc (Windows)
+    runs-on: windows-latest
+    env:
+      RUSTDOCFLAGS: -D warnings
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo doc --no-deps --all-features

@@ -5,44 +5,53 @@
 //! table contains only `ntdll` (or nothing at all, depending on the runtime).
 //! The resulting `MessageBoxA` symbol does not appear anywhere in the
 //! compiled artifact.
-
-use syscalls_rs::hash::hash_str;
-use syscalls_rs::native::{get_export_by_hash, get_module_base_by_hash};
-use syscalls_rs::prelude::*;
-use syscalls_rs::shared::NTSTATUS;
-use syscalls_rs::syscall_id;
-
-#[repr(C)]
-struct UnicodeString {
-    length: u16,
-    max_length: u16,
-    buffer: *const u16,
-}
-
-type NtRaiseHardError = unsafe extern "system" fn(
-    error_status: NTSTATUS,
-    number_of_parameters: u32,
-    unicode_string_parameter_mask: u32,
-    parameters: *const usize,
-    valid_response_option: u32,
-    response: *mut u32,
-) -> NTSTATUS;
-
-type RtlAdjustPrivilege = unsafe extern "system" fn(
-    privilege: u32,
-    enable: u8,
-    current_thread: u8,
-    enabled: *mut u8,
-) -> NTSTATUS;
-
-// Severity = warning (0x4), Customer bit = 1 (0x2 << 28 → 0x1 set in high nibble
-// when combined). The "customer" bit tells the formatter to treat parameter 0
-// as a literal UNICODE_STRING instead of looking up a system message.
-const STATUS_SERVICE_NOTIFICATION: NTSTATUS = 0x5000_0018u32 as i32;
-const SE_SHUTDOWN_PRIVILEGE: u32 = 19;
-const RESPONSE_OPTION_OK: u32 = 1;
+//!
+//! This example is Windows-only.
 
 fn main() {
+    #[cfg(not(windows))]
+    {
+        eprintln!("This example is Windows-only.");
+        std::process::exit(1);
+    }
+    #[cfg(windows)]
+    windows_main();
+}
+
+#[cfg(windows)]
+fn windows_main() {
+    use syscalls_rs::hash::hash_str;
+    use syscalls_rs::native::{get_export_by_hash, get_module_base_by_hash};
+    use syscalls_rs::prelude::*;
+    use syscalls_rs::shared::NTSTATUS;
+    use syscalls_rs::syscall_id;
+
+    #[repr(C)]
+    struct UnicodeString {
+        length: u16,
+        max_length: u16,
+        buffer: *const u16,
+    }
+
+    type NtRaiseHardError = unsafe extern "system" fn(
+        error_status: NTSTATUS,
+        number_of_parameters: u32,
+        unicode_string_parameter_mask: u32,
+        parameters: *const usize,
+        valid_response_option: u32,
+        response: *mut u32,
+    ) -> NTSTATUS;
+
+    type RtlAdjustPrivilege = unsafe extern "system" fn(
+        privilege: u32,
+        enable: u8,
+        current_thread: u8,
+        enabled: *mut u8,
+    ) -> NTSTATUS;
+
+    const STATUS_SERVICE_NOTIFICATION: NTSTATUS = 0x5000_0018u32 as i32;
+    const SE_SHUTDOWN_PRIVILEGE: u32 = 19;
+    const RESPONSE_OPTION_OK: u32 = 1;
     let mgr: SectionDirectManager = Manager::new();
     if !mgr.initialize() {
         std::process::exit(1);

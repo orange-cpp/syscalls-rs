@@ -3,7 +3,7 @@ name = "syscalls-rs"
 version = "0.1.0"
 edition = "2021"
 license = "MIT"
-description = "Rust port of syscalls-cpp: policy-based framework for crafting undetectable/protected Windows syscalls (x86/x64)."
+description = "Policy-based framework for crafting direct syscalls (Windows x86/x64, Linux x86_64)."
 repository = "https://github.com/sapdragon/syscalls-cpp"
 
 [features]
@@ -23,6 +23,8 @@ windows-sys = { version = "0.59", features = [
     "Win32_System_WindowsProgramming",
 ] }
 
+[target.'cfg(target_os = "linux")'.dependencies]
+
 [lib]
 crate-type = ["rlib"]
 
@@ -33,6 +35,10 @@ path = "examples/basic_usage.rs"
 [[example]]
 name = "message_box"
 path = "examples/message_box.rs"
+
+[[example]]
+name = "linux_demo"
+path = "examples/linux_demo.rs"
 
 [profile.release]
 opt-level = 3
