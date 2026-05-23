@@ -33,7 +33,7 @@ fn windows_main() {
         buffer: *const u16,
     }
 
-    type NtRaiseHardError = unsafe extern "system" fn(
+    type NtRaiseHardError = unsafe extern "C" fn(
         error_status: NTSTATUS,
         number_of_parameters: u32,
         unicode_string_parameter_mask: u32,
@@ -42,7 +42,7 @@ fn windows_main() {
         response: *mut u32,
     ) -> NTSTATUS;
 
-    type RtlAdjustPrivilege = unsafe extern "system" fn(
+    type RtlAdjustPrivilege = unsafe extern "C" fn(
         privilege: u32,
         enable: u8,
         current_thread: u8,

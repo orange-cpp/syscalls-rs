@@ -14,9 +14,9 @@ mod windows_tests {
     use syscalls_rs::syscall_id;
 
     type NtAlloc =
-        unsafe extern "system" fn(isize, *mut *mut c_void, usize, *mut usize, u32, u32) -> NTSTATUS;
-    type NtFree = unsafe extern "system" fn(isize, *mut *mut c_void, *mut usize, u32) -> NTSTATUS;
-    type NtClose = unsafe extern "system" fn(isize) -> NTSTATUS;
+        unsafe extern "C" fn(isize, *mut *mut c_void, usize, *mut usize, u32, u32) -> NTSTATUS;
+    type NtFree = unsafe extern "C" fn(isize, *mut *mut c_void, *mut usize, u32) -> NTSTATUS;
+    type NtClose = unsafe extern "C" fn(isize) -> NTSTATUS;
 
     const MEM_COMMIT: u32 = 0x1000;
     const MEM_RESERVE: u32 = 0x2000;

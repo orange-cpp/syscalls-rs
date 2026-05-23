@@ -19,7 +19,7 @@
 //! assert!(mgr.initialize());
 //!
 //! let inv = mgr.invoke(syscalls_rs::syscall_id!("NtAllocateVirtualMemory")).unwrap();
-//! type NtAlloc = unsafe extern "system" fn(
+//! type NtAlloc = unsafe extern "C" fn(
 //!     isize, *mut *mut c_void, usize, *mut usize, u32, u32,
 //! ) -> NTSTATUS;
 //! let f: NtAlloc = unsafe { inv.as_fn() };

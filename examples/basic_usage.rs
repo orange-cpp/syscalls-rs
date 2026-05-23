@@ -6,7 +6,7 @@ fn main() {
     use syscalls_rs::shared::{current_process, is_success, NTSTATUS};
     use syscalls_rs::syscall_id;
 
-    type NtAllocateVirtualMemory = unsafe extern "system" fn(
+    type NtAllocateVirtualMemory = unsafe extern "C" fn(
         process: isize,
         base_address: *mut *mut c_void,
         zero_bits: usize,
