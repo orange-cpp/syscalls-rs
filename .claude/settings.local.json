@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cargo build:*)",
+      "Read(//home/orange/.cargo/**)",
+      "Read(//home/orange/.rustup/**)",
+      "Read(//usr/**)"
+    ]
+  }
+}

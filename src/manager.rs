@@ -123,7 +123,7 @@ pub struct Manager<A: Allocator, G: StubGenerator, C: ParserChain = crate::parse
 struct State {
     entries: Vec<SyscallEntry>,
     region: AllocatedRegion,
-    #[cfg(windows)]
+    #[cfg(all(windows, target_pointer_width = "64"))]
     gadgets: Vec<*mut c_void>,
     #[cfg(windows)]
     veh_handle: *mut c_void,
@@ -176,8 +176,6 @@ impl<A: Allocator, G: StubGenerator, C: ParserChain> Manager<A, G, C> {
         } else {
             Vec::new()
         };
-        #[cfg(target_pointer_width = "32")]
-        let gadgets: Vec<*mut c_void> = Vec::new();
 
         let mut all = Vec::<SyscallEntry>::new();
         for &k in module_keys {
@@ -190,7 +188,10 @@ impl<A: Allocator, G: StubGenerator, C: ParserChain> Manager<A, G, C> {
             return false;
         }
 
-        self.finalize_stubs(&mut all, &gadgets, &mut guard)
+        #[cfg(target_pointer_width = "64")]
+        return self.finalize_stubs(&mut all, &gadgets, &mut guard);
+        #[cfg(target_pointer_width = "32")]
+        return self.finalize_stubs(&mut all, &mut guard);
     }
 
     // -----------------------------------------------------------------------
@@ -221,7 +222,7 @@ impl<A: Allocator, G: StubGenerator, C: ParserChain> Manager<A, G, C> {
     fn finalize_stubs(
         &self,
         all: &mut [SyscallEntry],
-        gadgets: &[*mut c_void],
+        #[cfg(target_pointer_width = "64")] gadgets: &[*mut c_void],
         guard: &mut std::sync::MutexGuard<'_, Option<State>>,
     ) -> bool {
         use windows_sys::Win32::System::Diagnostics::Debug::AddVectoredExceptionHandler;
@@ -244,11 +245,14 @@ impl<A: Allocator, G: StubGenerator, C: ParserChain> Manager<A, G, C> {
         for entry in all.iter() {
             let off = entry.offset as usize;
             let slot = &mut buf[off..off + stub_size];
+            #[cfg(target_pointer_width = "64")]
             let gadget = if G::REQUIRES_GADGET && !gadgets.is_empty() {
                 gadgets[(rdtscp() as usize) % gadgets.len()]
             } else {
                 core::ptr::null_mut()
             };
+            #[cfg(target_pointer_width = "32")]
+            let gadget = core::ptr::null_mut();
             G::generate(slot, entry.syscall_number, gadget);
         }
         let Some(region) = A::allocate(&buf) else {
@@ -268,6 +272,7 @@ impl<A: Allocator, G: StubGenerator, C: ParserChain> Manager<A, G, C> {
         **guard = Some(State {
             entries: all.to_vec(),
             region,
+            #[cfg(target_pointer_width = "64")]
             gadgets: gadgets.to_vec(),
             veh_handle,
         });

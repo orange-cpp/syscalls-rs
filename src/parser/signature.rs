@@ -30,6 +30,7 @@ unsafe fn do_parse(module: &ModuleInfo) -> Vec<SyscallEntry> {
     let export_start = nt.OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT].VirtualAddress;
     let export_end =
         export_start + nt.OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT].Size;
+    #[cfg(target_pointer_width = "64")]
     let module_end = module.base as usize + nt.OptionalHeader.SizeOfImage as usize;
 
     let nt_prefix = hash_str("Nt");

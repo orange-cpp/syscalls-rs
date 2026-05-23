@@ -3,8 +3,10 @@
 //! On x86, sorts `Zw*` exports by address.
 
 use core::slice;
+#[cfg(target_pointer_width = "64")]
 use std::collections::HashMap;
 
+#[cfg(target_pointer_width = "64")]
 use crate::hash::{hash_bytes_len, hash_str};
 use crate::types::{ModuleInfo, SyscallEntry, SyscallKey};
 
